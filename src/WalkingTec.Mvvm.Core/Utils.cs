@@ -540,6 +540,41 @@ namespace WalkingTec.Mvvm.Core
 
         #region 加解密
         /// <summary>
+        /// 自定义加密字符串
+        /// </summary>
+        /// <param name="inputStr">输入字符串</param>
+        /// <param name="keyStr">密码，可以为“”</param>
+        /// <returns>输出加密后字符串如：1A01359F403B0258</returns>
+        public static string EncryptString2(string inputStr, string keyStr)
+        {
+            DESCryptoServiceProvider des = new DESCryptoServiceProvider();
+            byte[] inputByteArray = Encoding.Default.GetBytes(inputStr);
+            byte[] keyByteArray = Encoding.Default.GetBytes(keyStr);
+            SHA1 ha = new SHA1Managed();
+            byte[] hb = ha.ComputeHash(keyByteArray);
+            var sKey = new byte[8];
+            var sIV = new byte[8];
+            for (int i = 0; i < 8; i++)
+                sKey[i] = hb[i];
+            for (int i = 8; i < 16; i++)
+                sIV[i - 8] = hb[i];
+            des.Key = sKey;
+            des.IV = sIV;
+            MemoryStream ms = new MemoryStream();
+            CryptoStream cs = new CryptoStream(ms, des.CreateEncryptor(), CryptoStreamMode.Write);
+            cs.Write(inputByteArray, 0, inputByteArray.Length);
+            cs.FlushFinalBlock();
+            StringBuilder ret = new StringBuilder();
+            foreach (byte b in ms.ToArray())
+            {
+                ret.AppendFormat("{0:X2}", b);
+            }
+            cs.Close();
+            ms.Close();
+            return ret.ToString();
+        }
+        #endregion
+        /// <summary>
         /// 通过密钥将内容加密
         /// </summary>
         /// <param name="stringToEncrypt">要加密的字符串</param>
@@ -575,7 +610,39 @@ namespace WalkingTec.Mvvm.Core
 
             return stringEncrypted;
         }
-
+        /// <summary>
+        /// 解密字符串
+        /// </summary>
+        /// <param name="inputStr">要解密的字符串</param>
+        /// <param name="keyStr">密钥</param>
+        /// <returns>解密后字符串</returns>
+        public static string DecryptString2(string inputStr, string keyStr)
+        {
+            DESCryptoServiceProvider des = new DESCryptoServiceProvider();
+            byte[] inputByteArray = new byte[inputStr.Length / 2];
+            for (int x = 0; x < inputStr.Length / 2; x++)
+            {
+                int i = (Convert.ToInt32(inputStr.Substring(x * 2, 2), 16));
+                inputByteArray[x] = (byte)i;
+            }
+            byte[] keyByteArray = Encoding.Default.GetBytes(keyStr);
+            SHA1 ha = new SHA1Managed();
+            byte[] hb = ha.ComputeHash(keyByteArray);
+            var sKey = new byte[8];
+            var sIV = new byte[8];
+            for (int i = 0; i < 8; i++)
+                sKey[i] = hb[i];
+            for (int i = 8; i < 16; i++)
+                sIV[i - 8] = hb[i];
+            des.Key = sKey;
+            des.IV = sIV;
+            MemoryStream ms = new MemoryStream();
+            CryptoStream cs = new CryptoStream(ms, des.CreateDecryptor(), CryptoStreamMode.Write);
+            cs.Write(inputByteArray, 0, inputByteArray.Length);
+            cs.FlushFinalBlock();
+            StringBuilder ret = new StringBuilder();
+            return System.Text.Encoding.Default.GetString(ms.ToArray());
+        }
         /// <summary>
         /// 通过密钥讲内容解密
         /// </summary>
